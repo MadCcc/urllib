@@ -44,7 +44,8 @@ export {
   MockAgent, ProxyAgent, Agent, Dispatcher,
   setGlobalDispatcher, getGlobalDispatcher,
   Request, RequestInfo, RequestInit,
-  Response,
+  Response, BodyInit, ResponseInit,
+  Headers, FormData,
 } from 'undici';
 // HttpClient2 is keep compatible with urllib@2 HttpClient2
 export {
@@ -67,6 +68,7 @@ export {
 } from './IncomingHttpHeaders.js';
 export * from './HttpClientError.js';
 export { FetchFactory, fetch } from './fetch.js';
+export { FormData as WebFormData } from './FormData.js';
 
 export default {
   request,

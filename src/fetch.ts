@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { debuglog } from 'node:util';
 import {
   fetch as UndiciFetch,
   RequestInfo,
@@ -8,6 +9,7 @@ import {
   Agent,
   getGlobalDispatcher,
   Pool,
+  Dispatcher,
 } from 'undici';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -35,9 +37,12 @@ import {
   HttpMethod,
   RequestMeta,
 } from './Request.js';
-import { FetchOpaque, fetchOpaqueInterceptor } from './FetchOpaqueInterceptor.js';
+import { FetchOpaque } from './FetchOpaqueInterceptor.js';
 import { RawResponseWithMeta, SocketInfo } from './Response.js';
 import { IncomingHttpHeaders } from './IncomingHttpHeaders.js';
+import { BaseAgent, BaseAgentOptions } from './BaseAgent.js';
+
+const debug = debuglog('urllib:fetch');
 
 export interface UrllibRequestInit extends RequestInit {
   // default is true
@@ -56,7 +61,7 @@ export type FetchResponseDiagnosticsMessage = {
 };
 
 export class FetchFactory {
-  static #dispatcher: Agent;
+  static #dispatcher: Dispatcher.ComposedDispatcher;
   static #opaqueLocalStorage = new AsyncLocalStorage<FetchOpaque>();
 
   static getDispatcher() {
@@ -68,17 +73,10 @@ export class FetchFactory {
   }
 
   static setClientOptions(clientOptions: ClientOptions) {
-    let dispatcherOption: Agent.Options = {
-      interceptors: {
-        Agent: [
-          fetchOpaqueInterceptor({
-            opaqueLocalStorage: FetchFactory.#opaqueLocalStorage,
-          }),
-        ],
-        Client: [],
-      },
+    let dispatcherOption: BaseAgentOptions = {
+      opaqueLocalStorage: FetchFactory.#opaqueLocalStorage,
     };
-    let dispatcherClazz: new (options: Agent.Options) => Agent = Agent;
+    let dispatcherClazz: new (options: BaseAgentOptions) => BaseAgent = BaseAgent;
     if (clientOptions?.lookup || clientOptions?.checkAddress) {
       dispatcherOption = {
         ...dispatcherOption,
@@ -87,21 +85,21 @@ export class FetchFactory {
         connect: clientOptions.connect,
         allowH2: clientOptions.allowH2,
       } as HttpAgentOptions;
-      dispatcherClazz = HttpAgent as unknown as new (options: Agent.Options) => Agent;
+      dispatcherClazz = HttpAgent as unknown as new (options: BaseAgentOptions) => BaseAgent;
     } else if (clientOptions?.connect) {
       dispatcherOption = {
         ...dispatcherOption,
         connect: clientOptions.connect,
         allowH2: clientOptions.allowH2,
       } as HttpAgentOptions;
-      dispatcherClazz = Agent;
+      dispatcherClazz = BaseAgent;
     } else if (clientOptions?.allowH2) {
       // Support HTTP2
       dispatcherOption = {
         ...dispatcherOption,
         allowH2: clientOptions.allowH2,
       } as HttpAgentOptions;
-      dispatcherClazz = Agent;
+      dispatcherClazz = BaseAgent;
     }
     FetchFactory.#dispatcher = new dispatcherClazz(dispatcherOption);
     initDiagnosticsChannel();
@@ -142,7 +140,7 @@ export class FetchFactory {
       // socket assigned
       queuing: 0,
       // dns lookup time
-      // dnslookup: 0,
+      dnslookup: 0,
       // socket connected
       connected: 0,
       // request headers sent
@@ -223,11 +221,14 @@ export class FetchFactory {
         res = await UndiciFetch(input, init);
       });
     } catch (e: any) {
-      channels.response.publish({
+      updateSocketInfo(socketInfo, internalOpaque, e);
+      urllibResponse.rt = performanceTime(requestStartTime);
+      debug('Request#%d throw error: %s', requestId, e);
+      channels.fetchResponse.publish({
         fetch: fetchMeta,
         error: e,
       } as FetchResponseDiagnosticsMessage);
-      channels.fetchResponse.publish({
+      channels.response.publish({
         request: reqMeta,
         response: urllibResponse,
         error: e,
@@ -237,7 +238,7 @@ export class FetchFactory {
 
     // get undici internal response
     const state = getResponseState(res!);
-    updateSocketInfo(socketInfo, internalOpaque /* , rawError */);
+    updateSocketInfo(socketInfo, internalOpaque);
 
     urllibResponse.headers = convertHeader(res!.headers);
     urllibResponse.status = urllibResponse.statusCode = res!.status;
@@ -246,7 +247,8 @@ export class FetchFactory {
       urllibResponse.size = parseInt(urllibResponse.headers['content-length']);
     }
     urllibResponse.rt = performanceTime(requestStartTime);
-
+    debug('Request#%d got response, status: %s, headers: %j, timing: %j, socket: %j',
+      requestId, urllibResponse.status, urllibResponse.headers, timing, urllibResponse.socket);
     channels.fetchResponse.publish({
       fetch: fetchMeta,
       timingInfo: state.timingInfo,

@@ -1,5 +1,40 @@
 # Changelog
 
+## [4.6.4](https://github.com/node-modules/urllib/compare/v4.6.3...v4.6.4) (2024-12-06)
+
+
+### Bug Fixes
+
+* export WebFormData ([#559](https://github.com/node-modules/urllib/issues/559)) ([dec6b12](https://github.com/node-modules/urllib/commit/dec6b1248ef68c1679f3d7f32c5544655e726045))
+
+## [4.6.3](https://github.com/node-modules/urllib/compare/v4.6.2...v4.6.3) (2024-12-05)
+
+
+### Bug Fixes
+
+* only set extend notation on non-ascii filename ([#558](https://github.com/node-modules/urllib/issues/558)) ([0cd9b06](https://github.com/node-modules/urllib/commit/0cd9b06031eb5bed08677b6503a8a0fba4ac7fd8))
+
+## [4.6.2](https://github.com/node-modules/urllib/compare/v4.6.1...v4.6.2) (2024-12-04)
+
+
+### Bug Fixes
+
+* fix socket info if fetch failed ([#556](https://github.com/node-modules/urllib/issues/556)) ([e9f4258](https://github.com/node-modules/urllib/commit/e9f425885aaa51258180048c5178d62af6da91d3))
+
+## [4.6.1](https://github.com/node-modules/urllib/compare/v4.6.0...v4.6.1) (2024-12-04)
+
+
+### Bug Fixes
+
+* fix socket info in response ([#555](https://github.com/node-modules/urllib/issues/555)) ([629c7a3](https://github.com/node-modules/urllib/commit/629c7a304998f921b5a9678808be3f28ac267f81))
+
+## [4.6.0](https://github.com/node-modules/urllib/compare/v4.5.1...v4.6.0) (2024-12-04)
+
+
+### Features
+
+* exports undici ([#554](https://github.com/node-modules/urllib/issues/554)) ([3c9fca7](https://github.com/node-modules/urllib/commit/3c9fca7c339753fa6d6430fb5659e6d11fc20997))
+
 ## [4.5.1](https://github.com/node-modules/urllib/compare/v4.5.0...v4.5.1) (2024-12-02)
 
 
